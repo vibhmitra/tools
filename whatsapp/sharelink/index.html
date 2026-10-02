@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShareLink Organizer</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#1c2430;--mut:#6b7686;--bd:#dde2ea;--acc:#128c7e;--accfg:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--card:#1b212a;--text:#e6eaf0;--mut:#8f9aab;--bd:#2c3542;--acc:#25d366;--accfg:#0b1a10}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:2}
+h1{font-size:17px;margin:0}
+.exports{display:flex;gap:8px;margin-left:auto}
+button,select,input[type=text]{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--text);border-radius:8px;padding:7px 12px}
+button{cursor:pointer}
+button.pri{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.4;cursor:not-allowed}
+main{max-width:1200px;margin:0 auto;padding:20px}
+#drop{border:2px dashed var(--bd);border-radius:12px;padding:28px;text-align:center;color:var(--mut);background:var(--card);cursor:pointer}
+#drop.over{border-color:var(--acc);color:var(--text)}
+.opts{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:14px 0;color:var(--mut)}
+.opts label{display:flex;gap:6px;align-items:center}
+#status{margin:8px 0;color:var(--mut)}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--bd);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);position:sticky;top:0;background:var(--card)}
+td a{color:var(--acc);word-break:break-all}
+td.n{color:var(--mut)}
+tr:last-child td{border-bottom:0}
+</style>
+</head>
+<body>
+<header>
+  <h1>ShareLink Organizer</h1>
+  <div class="exports">
+    <button id="bCopy" disabled>Copy</button>
+    <button id="bCsv" disabled>CSV</button>
+    <button id="bJson" disabled>JSON</button>
+  </div>
+</header>
+<main>
+  <div id="drop">Drop a WhatsApp <b>.txt</b> export here, or click to choose one<input id="file" type="file" accept=".txt,text/plain" hidden></div>
+  <div class="opts">
+    <label>Date format
+      <select id="fmt"><option value="MDY">MM/DD/YY</option><option value="DMY">DD/MM/YY</option></select>
+    </label>
+    <label>From date <input id="from" type="text" placeholder="e.g. 04/15/26" size="10"></label>
+  </div>
+  <div id="status">No file loaded.</div>
+  <div class="wrap"><table>
+    <thead><tr><th>#</th><th>Timestamp</th><th>Link notes</th><th>From</th><th>Type</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let content = "", rows = [];
+
+const RE = /^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s+\d{1,2}:\d{2}\s+-\s+.*?: from=(.*?)\nlink_notes=(.*?)\ntype=(.*?)\ntime=(.*?)(?=\n|$)/gm;
+
+function parseDate(s, fmt){
+  const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(!m) return null;
+  let a = +m[1], b = +m[2], y = +m[3];
+  if(y < 100) y += 2000;
+  const mo = fmt === "MDY" ? a : b, d = fmt === "MDY" ? b : a;
+  const dt = new Date(y, mo - 1, d);
+  return dt.getMonth() === mo - 1 && dt.getDate() === d ? dt : null;
+}
+
+function process(){
+  rows = [];
+  if(!content){ render(); return; }
+  const fmt = $("fmt").value, fromStr = $("from").value.trim();
+  let fromDt = null;
+  if(fromStr){
+    fromDt = parseDate(fromStr, fmt);
+    if(!fromDt){ $("status").textContent = "From date doesn't match the selected format."; render(); return; }
+  }
+  const text = content.replace(/\r\n?/g, "\n");
+  for(const m of text.matchAll(RE)){
+    const dt = parseDate(m[1], fmt);
+    if(!dt) continue;
+    if(fromDt && dt < fromDt) continue;
+    rows.push({timestamp:m[5].trim(), link_notes:m[3].trim(), from:m[2].trim(), type:m[4].trim()});
+  }
+  $("status").textContent = rows.length ? `${rows.length} structured link${rows.length>1?"s":""} found.` : "No valid structured links found matching your criteria.";
+  render();
+}
+
+function linkify(td, text){
+  const parts = text.split(/(https?:\/\/\S+)/g);
+  parts.forEach(p => {
+    if(/^https?:\/\//.test(p)){
+      const a = document.createElement("a");
+      a.href = p; a.textContent = p; a.target = "_blank"; a.rel = "noopener noreferrer";
+      td.appendChild(a);
+    } else td.appendChild(document.createTextNode(p));
+  });
+}
+
+function render(){
+  const tb = $("rows"); tb.textContent = "";
+  rows.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    const n = document.createElement("td"); n.className = "n"; n.textContent = i + 1; tr.appendChild(n);
+    ["timestamp","link_notes","from","type"].forEach(k => {
+      const td = document.createElement("td");
+      k === "link_notes" ? linkify(td, r[k]) : td.textContent = r[k];
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  ["bCopy","bCsv","bJson"].forEach(id => $(id).disabled = !rows.length);
+}
+
+// Exports (CSV keeps the same 6-column layout as the Python script, yup)
+function toCsv(){
+  const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const head = ['col1-timestamp','col2(blank)','col3(blank)','col4-link_notes','col5-from','col6-type'];
+  return [head, ...rows.map(r => [r.timestamp,"","",r.link_notes,r.from,r.type])]
+    .map(l => l.map(q).join(",")).join("\r\n");
+}
+const toJson = () => JSON.stringify(rows, null, 2);
+
+function download(name, data, type){
+  const url = URL.createObjectURL(new Blob([data], {type}));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function copy(){
+  const text = toCsv().replace(/","/g, '"\t"'); // tab-separated so it pastes into sheets
+  try { await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta = document.createElement("textarea"); ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  const b = $("bCopy"); b.textContent = "Copied!"; setTimeout(() => b.textContent = "Copy", 1200);
+}
+
+function loadFile(f){
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = () => { content = r.result; $("status").textContent = `Loaded ${f.name}…`; process(); };
+  r.readAsText(f, "utf-8");
+}
+
+$("drop").onclick = () => $("file").click();
+$("file").onchange = e => loadFile(e.target.files[0]);
+["dragover","dragenter"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave","drop"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", e => loadFile(e.dataTransfer.files[0]));
+$("fmt").onchange = $("from").oninput = process;
+$("bCopy").onclick = copy;
+$("bCsv").onclick = () => download("OrganizedLinks.csv", "\ufeff" + toCsv(), "text/csv;charset=utf-8");
+$("bJson").onclick = () => download("OrganizedLinks.json", toJson(), "application/json");
+</script>
+</body>
+</html>
