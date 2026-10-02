@@ -2,7 +2,7 @@
 just some html based tools.
 
 ### for whatsapp
-  - **sharelink-organizer** - extracts links that I shared using my app.
+  - **[sharelink-organizer](https://vibhmitra.github.io/tools/whatsapp/sharelink/)** - extracts links that I shared using my app.
 
 ----
 <footer>
