@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Real-Time Clock</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--text:#18202b;--mut:#6b7686;--bd:#dde2ea;--acc:#0f9d6e;--accbg:#e6f6ef;--hover:#eef2f6}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--text:#e6edf3;--mut:#8b96a5;--bd:#2a313b;--acc:#3ddc97;--accbg:#12281f;--hover:#1f2630}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
+main{width:100%;max-width:560px;background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:28px 24px 24px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+h1{margin:0 0 18px;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);text-align:center}
+#time{display:block;width:100%;border:1px solid transparent;background:var(--accbg);color:var(--acc);border-radius:12px;padding:22px 8px;cursor:pointer;
+  font:700 clamp(17px,4.9vw,28px)/1.2 ui-monospace,"JetBrains Mono",SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:-.02em;white-space:nowrap;text-align:center;
+  user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:border-color .15s,transform .08s}
+#time:hover{border-color:var(--acc)}
+#time:active{transform:scale(.99)}
+#time:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#hint{margin:10px 0 22px;text-align:center;font-size:13px;color:var(--mut);height:18px}
+#hint.ok{color:var(--acc);font-weight:600}
+.field{position:relative}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:6px}
+input{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+input:focus{outline:2px solid var(--acc);outline-offset:-1px;border-color:var(--acc)}
+input::placeholder{color:var(--mut)}
+ul{position:absolute;left:0;right:0;top:100%;margin:6px 0 0;padding:4px;list-style:none;max-height:220px;overflow-y:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:5}
+ul[hidden]{display:none}
+li{padding:8px 10px;border-radius:7px;cursor:pointer;font-size:14px}
+li:hover,li.act{background:var(--hover)}
+li.sel{color:var(--acc);font-weight:600}
+li.empty{color:var(--mut);font-style:italic;text-align:center;cursor:default}
+</style>
+</head>
+<body>
+<main>
+  <h1>Real-Time Clock</h1>
+  <button id="time" type="button" title="Click or tap to copy">Loading…</button>
+  <div id="hint" aria-live="polite">Click or tap the time to copy</div>
+  <div class="field">
+    <label for="tz">Timezone</label>
+    <input id="tz" type="text" autocomplete="off" spellcheck="false" placeholder="Search timezone (e.g. Kolkata)…">
+    <ul id="list" hidden></ul>
+  </div>
+</main>
+<script>
+(() => {
+  const timeEl = document.getElementById('time');
+  const hint = document.getElementById('hint');
+  const input = document.getElementById('tz');
+  const list = document.getElementById('list');
+  const HINT = 'Click or tap the time to copy';
+
+  let selected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let zones;
+  try { zones = Intl.supportedValuesOf('timeZone'); }
+  catch (e) { timeEl.textContent = 'Unsupported browser'; return; }
+
+  // Pre-compute offsets and search strings
+  const nowRef = new Date();
+  const items = zones.map(tz => {
+    const part = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
+      .formatToParts(nowRef).find(p => p.type === 'timeZoneName');
+    const off = (part && part.value.replace('GMT', '')) || '+00:00';
+    let name = tz, keys = tz.toLowerCase();
+    if (tz === 'Asia/Calcutta') { name = 'Asia/Kolkata'; keys += ' kolkata calcutta india'; }
+    if (tz === 'Asia/Saigon') keys += ' ho chi minh vietnam';
+    return { id: tz, search: `${keys} ${off}`, label: `${name.replace(/_/g, ' ')} (${off})` };
+  });
+
+  const setInputToSelected = () => {
+    const it = items.find(i => i.id === selected);
+    if (it) input.value = it.label;
+  };
+  setInputToSelected();
+
+  // ---- Dropdown ----
+  let shown = [], active = -1;
+
+  function render(filter = '') {
+    const q = filter.toLowerCase().trim();
+    shown = items.filter(i => i.search.includes(q));
+    active = shown.length && q ? 0 : -1;
+    list.textContent = '';
+    if (!shown.length) {
+      const li = document.createElement('li');
+      li.className = 'empty'; li.textContent = 'No timezones found';
+      list.appendChild(li);
+      return;
+    }
+    shown.forEach((it, idx) => {
+      const li = document.createElement('li');
+      li.textContent = it.label;
+      if (it.id === selected) li.classList.add('sel');
+      if (idx === active) li.classList.add('act');
+      li.addEventListener('mousedown', e => { e.preventDefault(); choose(it); });
+      list.appendChild(li);
+    });
+  }
+
+  function highlight(i) {
+    const lis = list.querySelectorAll('li');
+    if (!lis.length || !shown.length) return;
+    active = (i + shown.length) % shown.length;
+    lis.forEach((l, n) => l.classList.toggle('act', n === active));
+    lis[active].scrollIntoView({ block: 'nearest' });
+  }
+
+  function choose(it) {
+    selected = it.id;
+    input.value = it.label;
+    list.hidden = true;
+    input.blur();
+    update();
+  }
+
+  input.addEventListener('focus', () => {
+    input.value = '';
+    render('');
+    list.hidden = false;
+    const s = list.querySelector('.sel');
+    if (s) s.scrollIntoView({ block: 'center' });
+  });
+  input.addEventListener('input', e => { render(e.target.value); list.hidden = false; });
+  input.addEventListener('blur', () => { list.hidden = true; setInputToSelected(); });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlight(active + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlight(active - 1); }
+    else if (e.key === 'Enter' && shown[active]) { e.preventDefault(); choose(shown[active]); }
+    else if (e.key === 'Escape') input.blur();
+  });
+
+  // ---- Clock (format: YYYY-MM-DDTHH:MM:SS±HH:MM) ----
+  function update() {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: selected, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hourCycle: 'h23', timeZoneName: 'longOffset'
+    }).formatToParts(new Date());
+    const p = {};
+    parts.forEach(x => p[x.type] = x.value);
+    const hh = p.hour === '24' ? '00' : (p.hour || '00');
+    const offset = (p.timeZoneName || '').replace('GMT', '') || '+00:00';
+    const out = `${p.year || '0000'}-${p.month || '00'}-${p.day || '00'}T${hh}:${p.minute || '00'}:${p.second || '00'}${offset}`;
+    if (timeEl.textContent !== out) timeEl.textContent = out;
+  }
+
+  // ---- Click / tap to copy ----
+  let t;
+  async function copy() {
+    const text = timeEl.textContent;
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      ta.remove();
+    }
+    hint.textContent = ok ? 'Copied ✓' : 'Copy failed';
+    hint.classList.toggle('ok', ok);
+    clearTimeout(t);
+    t = setTimeout(() => { hint.textContent = HINT; hint.classList.remove('ok'); }, 1400);
+  }
+  timeEl.addEventListener('click', copy);
+
+  update();
+  setInterval(update, 100);
+})();
+</script>
+</body>
+</html>

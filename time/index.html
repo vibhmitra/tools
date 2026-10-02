@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clock Cards</title>
+<style>
+:root{--bg:#f1f4f9;--text:#18202b;--mut:#6b7686;--bd:#cfd6e0;--card:#fff;--acc:#0f9d6e;--hover:#eef2f6}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--text:#e6edf3;--mut:#8b96a5;--bd:#2f3844;--card:#161b22;--acc:#3ddc97;--hover:#1f2630}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 16px 40px}
+.wrap{max-width:1100px;margin:0 auto}
+header{text-align:center;margin-bottom:26px}
+h1{margin:0;font-size:28px;letter-spacing:-.02em}
+header p{margin:6px 0 0;color:var(--mut)}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:16px}
+.card{position:relative;color:#fff;border-radius:20px;padding:18px 20px 16px;box-shadow:0 10px 26px rgba(0,0,0,.18);transition:transform .15s,opacity .2s;animation:pop .35s ease both;background:var(--g)}
+.card[data-p=dawn]{--g:linear-gradient(135deg,#d6568a,#f28b5c)}
+.card[data-p=day]{--g:linear-gradient(135deg,#1769c9,#2fa4e8)}
+.card[data-p=dusk]{--g:linear-gradient(135deg,#5b3a8c,#d9653f)}
+.card[data-p=night]{--g:linear-gradient(135deg,#0f1a2e,#2b3f66)}
+.card.out{opacity:0;transform:scale(.85)}
+.card.shake{animation:shake .4s}
+.emo{position:absolute;top:14px;right:50px;font-size:34px;animation:bob 3s ease-in-out infinite}
+.x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:18px;line-height:1;cursor:pointer;opacity:.7}
+.x:hover{opacity:1;background:rgba(255,255,255,.3)}
+.nm{font-size:20px;font-weight:700;padding-right:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb{font-size:13px;opacity:.8;margin-bottom:14px}
+.t{display:block;width:100%;text-align:left;border:0;border-radius:12px;background:rgba(0,0,0,.25);color:#fff;padding:12px 12px;cursor:pointer;white-space:nowrap;
+  font:700 clamp(13px,4.6vw,18px)/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:-.03em;-webkit-tap-highlight-color:transparent;transition:background .15s,transform .08s}
+.t:hover{background:rgba(0,0,0,.38)}
+.t:active{transform:scale(.98)}
+.t:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.meta{font-size:12px;opacity:.75;margin-top:10px;display:flex;justify-content:space-between}
+.toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;color:#111;font-weight:700;padding:6px 14px;border-radius:999px;pointer-events:none;animation:toast 1s ease forwards;z-index:3}
+.bit{position:absolute;left:50%;top:60%;pointer-events:none;font-size:20px;animation:fly .8s ease-out forwards;z-index:2}
+.add{border:2px dashed var(--bd);background:transparent;color:var(--mut);box-shadow:none;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:150px;cursor:pointer;text-align:center;animation:none}
+.add:hover{border-color:var(--acc);color:var(--acc)}
+.add .plus{font-size:34px;line-height:1}
+.add.open{cursor:default;z-index:10;border-style:solid;border-color:var(--acc);background:var(--card);color:var(--text)}
+.add input{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;display:none}
+.add.open input{display:block}.add.open .lbl{display:none}
+.add input:focus{outline:2px solid var(--acc);outline-offset:-1px}
+ul{position:absolute;left:12px;right:12px;top:calc(50% + 28px);margin:0;padding:4px;list-style:none;max-height:220px;overflow-y:auto;text-align:left;background:var(--card);color:var(--text);border:1px solid var(--bd);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+ul[hidden]{display:none}
+li{padding:8px 10px;border-radius:7px;cursor:pointer;font-size:14px}
+li:hover,li.act{background:var(--hover)}
+li.empty{color:var(--mut);font-style:italic;text-align:center;cursor:default}
+footer{text-align:center;margin-top:28px;color:var(--mut);font-size:13px}
+footer button{background:none;border:0;color:var(--mut);text-decoration:underline;cursor:pointer;font:inherit}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.96)}}
+@keyframes bob{50%{transform:translateY(-5px) rotate(6deg)}}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,-30%) scale(.7)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-90%)}}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⏰ Clock Cards</h1>
+    <p>Tap any time to copy it ✨ Your clocks are remembered on this device.</p>
+  </header>
+  <div id="grid"></div>
+  <footer><button id="reset">Reset to defaults</button></footer>
+</div>
+<script>
+(() => {
+  const KEY = 'clocks.v1';
+  const DEFAULT = ['local', 'UTC'];
+  const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let zones;
+  try { zones = Intl.supportedValuesOf('timeZone'); }
+  catch (e) { document.body.textContent = 'Unsupported browser'; return; }
+  if (!zones.includes('UTC')) zones = ['UTC', ...zones];
+
+  const resolve = id => id === 'local' ? local : id;
+  const grid = document.getElementById('grid');
+
+  // ---- Persistence ----
+  function load() {
+    try {
+      const v = JSON.parse(localStorage.getItem(KEY));
+      if (Array.isArray(v) && v.every(x => x === 'local' || zones.includes(x))) return v;
+    } catch (e) {}
+    return DEFAULT.slice();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(ids)); } catch (e) {} }
+  let ids = load();
+
+  // ---- Formatting: YYYY-MM-DDTHH:MM:SS±HH:MM ----
+  const fmtCache = {};
+  function fmt(zone) {
+    const f = fmtCache[zone] || (fmtCache[zone] = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZoneName: 'longOffset'
+    }));
+    const p = {};
+    f.formatToParts(new Date()).forEach(x => p[x.type] = x.value);
+    const hh = p.hour === '24' ? '00' : (p.hour || '00');
+    const offset = (p.timeZoneName || '').replace('GMT', '') || '+00:00';
+    return {
+      iso: `${p.year}-${p.month}-${p.day}T${hh}:${p.minute}:${p.second}${offset}`,
+      offset, day: p.weekday, h: +hh
+    };
+  }
+  function phase(h) {
+    return h >= 5 && h < 8 ? ['dawn', '🌅'] : h >= 8 && h < 17 ? ['day', '☀️'] : h >= 17 && h < 20 ? ['dusk', '🌇'] : ['night', '🌙'];
+  }
+
+  // ---- Names ----
+  const pretty = s => s.replace(/_/g, ' ');
+  function title(id) {
+    if (id === 'local') return 'Your local time';
+    if (id === 'UTC') return 'UTC';
+    return id === 'Asia/Calcutta' ? 'Kolkata' : pretty(id.split('/').pop());
+  }
+  function sub(id) {
+    if (id === 'local') return pretty(local === 'Asia/Calcutta' ? 'Asia/Kolkata' : local);
+    if (id === 'UTC') return 'Coordinated Universal Time';
+    return pretty(id.split('/')[0]);
+  }
+
+  // ---- Cards ----
+  let cards = [];
+  function buildCard(id) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = '<button class="x" aria-label="Remove clock" title="Remove">×</button><div class="emo"></div><div class="nm"></div><div class="sb"></div><button class="t" type="button" title="Click or tap to copy"></button><div class="meta"><span class="d"></span><span class="o"></span></div>';
+    el.querySelector('.nm').textContent = title(id);
+    el.querySelector('.sb').textContent = sub(id);
+    const c = { id, el, t: el.querySelector('.t'), emo: el.querySelector('.emo'), d: el.querySelector('.d'), o: el.querySelector('.o') };
+    c.t.addEventListener('click', () => copy(c));
+    el.querySelector('.x').addEventListener('click', () => {
+      el.classList.add('out');
+      setTimeout(() => { ids = ids.filter(x => x !== id); save(); render(); }, 200);
+    });
+    return c;
+  }
+
+  let toastT;
+  async function copy(c) {
+    const text = c.t.textContent;
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      ta.remove();
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = ok ? 'Copied! ✨' : 'Copy failed';
+    c.el.appendChild(toast);
+    setTimeout(() => toast.remove(), 1000);
+    if (ok) for (let i = 0; i < 7; i++) {
+      const b = document.createElement('span');
+      b.className = 'bit'; b.textContent = c.emo.textContent;
+      const a = (Math.PI * 2 * i) / 7;
+      b.style.cssText = `--dx:${Math.cos(a) * 90}px;--dy:${Math.sin(a) * 60 - 20}px;--r:${(Math.random() - .5) * 120}deg`;
+      c.el.appendChild(b);
+      setTimeout(() => b.remove(), 800);
+    }
+  }
+
+  function render() {
+    grid.textContent = '';
+    cards = ids.map(buildCard);
+    cards.forEach(c => grid.appendChild(c.el));
+    grid.appendChild(addCard);
+    update();
+  }
+
+  function update() {
+    cards.forEach(c => {
+      const f = fmt(resolve(c.id));
+      if (c.t.textContent !== f.iso) c.t.textContent = f.iso;
+      const [p, e] = phase(f.h);
+      if (c.el.dataset.p !== p) { c.el.dataset.p = p; c.emo.textContent = e; }
+      c.d.textContent = f.day;
+      c.o.textContent = 'UTC' + f.offset;
+    });
+  }
+
+  // ---- Add card with timezone search ----
+  const items = zones.map(tz => {
+    const part = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
+      .formatToParts(new Date()).find(p => p.type === 'timeZoneName');
+    const off = (part && part.value.replace('GMT', '')) || '+00:00';
+    let name = tz, keys = tz.toLowerCase();
+    if (tz === 'Asia/Calcutta') { name = 'Asia/Kolkata'; keys += ' kolkata calcutta india'; }
+    if (tz === 'Asia/Saigon') keys += ' ho chi minh vietnam';
+    return { id: tz, search: `${keys} ${off}`, label: `${pretty(name)} (${off})` };
+  });
+
+  const addCard = document.createElement('div');
+  addCard.className = 'card add';
+  addCard.innerHTML = '<div class="lbl"><div class="plus">＋</div>Add a clock</div><input type="text" autocomplete="off" spellcheck="false" placeholder="Search city or timezone…" aria-label="Search timezone"><ul hidden></ul>';
+  const input = addCard.querySelector('input');
+  const list = addCard.querySelector('ul');
+  let shown = [], active = -1;
+
+  function openAdd() {
+    if (addCard.classList.contains('open')) return;
+    addCard.classList.add('open');
+    input.value = ''; fill(''); list.hidden = false; input.focus();
+  }
+  function closeAdd() { addCard.classList.remove('open'); list.hidden = true; }
+
+  function fill(q) {
+    q = q.toLowerCase().trim();
+    shown = items.filter(i => i.search.includes(q));
+    active = shown.length && q ? 0 : -1;
+    list.textContent = '';
+    if (!shown.length) {
+      const li = document.createElement('li');
+      li.className = 'empty'; li.textContent = 'No timezones found';
+      list.appendChild(li); return;
+    }
+    shown.forEach((it, i) => {
+      const li = document.createElement('li');
+      li.textContent = it.label;
+      if (i === active) li.classList.add('act');
+      li.addEventListener('mousedown', e => { e.preventDefault(); choose(it); });
+      list.appendChild(li);
+    });
+  }
+  function move(i) {
+    const lis = list.querySelectorAll('li');
+    if (!shown.length) return;
+    active = (i + shown.length) % shown.length;
+    lis.forEach((l, n) => l.classList.toggle('act', n === active));
+    lis[active].scrollIntoView({ block: 'nearest' });
+  }
+  function choose(it) {
+    const dupe = cards.find(c => resolve(c.id) === it.id);
+    closeAdd(); input.blur();
+    if (dupe) {
+      dupe.el.classList.remove('shake'); void dupe.el.offsetWidth; dupe.el.classList.add('shake');
+      dupe.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return;
+    }
+    ids.push(it.id); save(); render();
+    const last = cards[cards.length - 1];
+    if (last) last.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  addCard.addEventListener('click', openAdd);
+  input.addEventListener('input', e => fill(e.target.value));
+  input.addEventListener('blur', closeAdd);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); move(active + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); move(active - 1); }
+    else if (e.key === 'Enter' && shown[active]) { e.preventDefault(); choose(shown[active]); }
+    else if (e.key === 'Escape') input.blur();
+  });
+
+  document.getElementById('reset').addEventListener('click', () => { ids = DEFAULT.slice(); save(); render(); });
+
+  render();
+  setInterval(update, 100);
+})();
+</script>
+</body>
+</html>
